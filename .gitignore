@@ -1,0 +1,31 @@
+# ── Secretos ────────────────────────────────────────────────
+.env
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Datos generados en runtime ───────────────────────────────
+processed_files.json
+logs/
+
+# ── Visual Studio / VS Code ──────────────────────────────────
+.vs/
+.vscode/
+*.suo
+*.user
+
+# ── Windows ──────────────────────────────────────────────────
+Thumbs.db
+desktop.ini
+
+# ── Playwright ───────────────────────────────────────────────
+playwright-report/
+test-results/
