@@ -1,5 +1,8 @@
 # ── Secretos ────────────────────────────────────────────────
 .env
+*.env
+.env.local
+.env.production
 
 # ── Python ───────────────────────────────────────────────────
 __pycache__/
@@ -11,21 +14,44 @@ __pycache__/
 dist/
 build/
 *.egg
+.eggs/
+pip-wheel-metadata/
+
+# ── Entornos virtuales ───────────────────────────────────────
+venv/
+env/
+.venv/
+ENV/
 
 # ── Datos generados en runtime ───────────────────────────────
 processed_files.json
 logs/
+*.log
 
 # ── Visual Studio / VS Code ──────────────────────────────────
 .vs/
-.vscode/
 *.suo
 *.user
+*.sqlite
+slnx.sqlite
+VSWorkspaceState.json
+ProjectSettings.json
+.vscode/settings.json
+.vscode/launch.json
 
 # ── Windows ──────────────────────────────────────────────────
 Thumbs.db
-desktop.ini
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
 # ── Playwright ───────────────────────────────────────────────
+playwright/.auth/
 playwright-report/
 test-results/
+
+# ── Obsidian ─────────────────────────────────────────────────
+.obsidian/
+
+# ── Descargas temporales ─────────────────────────────────────
+downloads_temp/
