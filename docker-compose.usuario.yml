@@ -1,0 +1,27 @@
+# ============================================================
+#  docker-compose.yml — Bot para facu
+#  Solo necesitás este archivo + tu .env para correr la app
+# ============================================================
+
+services:
+  bot:
+    image: valentingarciad/bot-para-facu:latest
+    container_name: bot_facu
+
+    volumes:
+      - ./documentos:/data/documentos   # Poné tus PDFs y DOCX acá
+      - ./logs:/app/logs                # Los logs aparecen acá
+
+    env_file:
+      - .env
+
+    environment:
+      - DOCUMENTS_ROOT=/data/documentos
+      - PYTHONUNBUFFERED=1
+
+    security_opt:
+      - seccomp:unconfined
+
+    stdin_open: true
+    tty: true
+    restart: "no"

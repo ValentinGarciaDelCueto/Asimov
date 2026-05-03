@@ -17,7 +17,7 @@ services:
     volumes:
       - ./documentos:/data/documentos        # PDFs y DOCX de la facu
       - ./logs:/app/logs                     # Logs del sistema
-      - ./processed_files.json:/app/processed_files.json  # Registro de archivos procesados
+      - ./processed_files.json:/app/processed_files.json:rw  # Registro de archivos procesados
 
     # Cargar variables de entorno desde .env (NUNCA commitear el .env)
     env_file:

@@ -4,7 +4,56 @@ Sistema automático que lee tus documentos universitarios (PDF y Word), los resu
 
 ---
 
-## ⚡ Instalación rápida (4 pasos)
+## ⚡ Instalación rápida con Docker (recomendado)
+
+> **No necesitás instalar Python ni ninguna dependencia.** Solo Docker Desktop.
+
+### 1. Instalar Docker Desktop
+Descargalo desde https://www.docker.com/products/docker-desktop/ e instalalo como administrador. Abrilo antes de continuar.
+
+### 2. Crear tu carpeta de trabajo
+Creá una carpeta vacía en cualquier lugar y dentro de ella:
+- Descargá `docker-compose.yml` y `.env.example` desde el repositorio
+- Renombrá `.env.example` a `.env`
+- Creá una carpeta llamada `documentos`
+
+La estructura debe quedar así:
+```
+mi-carpeta/
+├── docker-compose.yml
+├── .env
+└── documentos/     ← acá van tus PDFs y DOCX
+```
+
+### 3. Completar el archivo .env
+Abrí `.env` con el Bloc de notas y completá tus credenciales:
+```env
+PROVIDER=groq
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxx
+CAMPUS_USER=tu_usuario
+CAMPUS_PASS=tu_contraseña
+NOTION_TOKEN=secret_xxxxxxxxxxxxxxxx
+NOTION_DATABASE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+El archivo `.env` **nunca se sube a GitHub** — ya está en `.gitignore`.
+
+### 4. Obtener las API keys
+- **Groq (gratis):** https://console.groq.com → API Keys
+- **Notion:** https://www.notion.so/my-integrations → New Integration → copiar token
+- **Anthropic (solo si usás `PROVIDER=anthropic`):** https://console.anthropic.com → API Keys
+
+### 5. Lanzar el bot
+Abrí una terminal (CMD) en tu carpeta y corré:
+```cmd
+docker compose run --rm bot python main.py
+```
+La primera vez Docker descarga la imagen automáticamente (~5 minutos). Las siguientes veces arranca en segundos.
+
+---
+
+## 🔧 Instalación manual (sin Docker)
+
+Si preferís instalar Python directamente en tu máquina:
 
 ### 1. Instalar dependencias
 ```
@@ -12,7 +61,7 @@ install.bat
 ```
 O manualmente:
 ```cmd
-pip install anthropic groq pdfplumber python-docx notion-client playwright python-dotenv
+pip install anthropic groq pdfplumber python-docx notion-client playwright python-dotenv textual
 playwright install chromium
 ```
 
@@ -20,27 +69,61 @@ playwright install chromium
 ```cmd
 copy .env.example .env
 ```
-Abrí `.env` con el Bloc de notas y completá tus valores:
-```env
-GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxx
-CAMPUS_USER=tu_usuario
-CAMPUS_PASS=tu_contraseña
-NOTION_TOKEN=secret_xxxxxxxxxxxxxxxx
-NOTION_DATABASE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-DOCUMENTS_ROOT=C:\Users\TuNombre\Documentos\Universidad
-```
-El archivo `.env` **nunca se sube a GitHub** — ya está en `.gitignore`.
+Completá tus valores en `.env` (ver sección anterior).
 
-### 3. Obtener las API keys
-- **Groq (gratis):** https://console.groq.com → API Keys
-- **Notion:** https://www.notion.so/my-integrations → New Integration → copiar token
-- **Anthropic (solo si usás `PROVIDER=anthropic`):** https://console.anthropic.com → API Keys
-
-### 4. Probar
+### 3. Lanzar la interfaz
 ```cmd
-python main.py --dry-run
+python tui.py
 ```
-Si muestra los archivos sin errores, todo está listo.
+
+---
+
+## 🖥️ Interfaz TUI (Recomendado)
+
+```cmd
+python tui.py
+```
+
+Abre una interfaz de pantalla completa en la terminal para configurar el sistema sin tocar archivos.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Resumidor Academico — UNO Campus Edition        [Header]    │
+├────────────┬─────────────────────────────────────────────────┤
+│ > Estado   │  Estado del sistema                             │
+│  Proveedor │  Proveedor: Groq — llama-3.3-70b-versatile      │
+│  Modelo    │  Cuota Groq: ~47 PDFs disponibles hoy           │
+│  Keys      │  Archivos pendientes: 3                         │
+│  Prompt    │                                                 │
+│  Ejecutar  │  Carpeta de documentos:                         │
+│            │  [C:\Users\...\Materiales facu            ]     │
+├────────────┴─────────────────────────────────────────────────┤
+│  [S] Guardar  [↑↓] Navegar  [?] Ayuda  [Q] Salir            │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Secciones
+
+| Sección | Qué podés hacer |
+|---------|-----------------|
+| **Estado** | Ver stats del sistema, cuota de Groq, archivos pendientes, log reciente. Cambiar la carpeta de documentos. |
+| **Proveedor** | Elegir entre Groq (gratis) y Anthropic (pago) |
+| **Modelo** | Seleccionar modelo con tabla de límites (req/min, tokens/día, costo). Expandir parámetros avanzados (chunk size, max tokens). |
+| **Keys** | Configurar todas las credenciales: Groq API key, Anthropic API key, usuario/clave del campus, token y database ID de Notion. |
+| **Prompt** | Editar el prompt de resumen (técnica Feynman). Botón para restablecer al default. |
+| **Ejecutar** | Lanzar el procesamiento con log en tiempo real. Modos: completo, solo descargar, solo resumir, dry-run. Filtro por materia. |
+
+### Teclas
+
+| Tecla | Acción |
+|-------|--------|
+| `S` | Guardar la configuración del panel activo |
+| `Q` | Salir |
+| `?` | Mostrar ayuda |
+| `↑ / ↓` | Navegar entre secciones |
+| `Escape` | Cerrar modal de ayuda |
+
+Los cambios se guardan en `.env` — nunca en el código.
 
 ---
 
@@ -143,6 +226,20 @@ python campus_downloader.py --materia "Análisis Matemático" --año 2026 --dest
 
 ## 🖥️ Comandos disponibles
 
+### Con Docker (recomendado)
+
+| Comando | Descripción |
+|---------|-------------|
+| `docker compose run --rm bot python main.py` | Descarga del campus + resume archivos nuevos |
+| `docker compose run --rm bot python main.py --dry-run` | Muestra qué procesaría (sin gastar tokens) |
+| `docker compose run --rm bot python main.py --reset` | Reprocesa todos los archivos desde cero |
+| `docker compose run --rm bot python main.py --skip-download` | Solo resume, sin ir al campus |
+| `docker compose run --rm bot python main.py --download-only` | Solo descarga del campus, sin resumir |
+| `docker compose run --rm bot python main.py --subject "Matemáticas"` | Solo procesa esa materia |
+| `docker compose run --rm bot python tui.py` | Abre la interfaz visual TUI |
+
+### Sin Docker (instalación manual)
+
 | Comando | Descripción |
 |---------|-------------|
 | `python main.py` | Procesa archivos nuevos |
@@ -226,17 +323,22 @@ Con Groq el costo es $0.00.
 
 ## 🔧 Personalización
 
-### Cambiar modelo de IA (config.py)
-```python
-# Más barato, rápido
-MODEL = "claude-haiku-4-5-20251001"
+La forma más fácil de personalizar es usar `python tui.py` — secciones **Modelo** y **Prompt**.
 
-# Más detallado (x6 más caro)
-MODEL = "claude-sonnet-4-6"
+### Cambiar modelo de IA
+Desde el TUI → sección **Modelo** → seleccioná el modelo deseado → **Guardar**.
+
+O editá `config.py`:
+```python
+MODEL = "claude-haiku-4-5-20251001"   # Anthropic — más rápido y económico
+MODEL = "claude-sonnet-4-5"            # Anthropic — más detallado
+GROQ_MODEL = "llama-3.1-8b-instant"   # Groq — más rápido, menor calidad
 ```
 
-### Personalizar el formato del resumen (config.py)
-Editá `SUMMARY_PROMPT_TEMPLATE` para cambiar la estructura del resumen generado.
+### Personalizar el prompt de resumen
+Desde el TUI → sección **Prompt** → editá el texto → **Guardar**.
+
+O editá `SUMMARY_PROMPT_TEMPLATE` en `config.py`.
 
 ### Cambiar frecuencia de ejecución
 En `setup_scheduler.bat`, cambiar `/d SUN` por:
@@ -248,20 +350,27 @@ En `setup_scheduler.bat`, cambiar `/d SUN` por:
 
 ## 🐛 Solución de problemas
 
+**Docker: "failed to connect to docker API"**
+→ Docker Desktop no está abierto. Abrilo y esperá a que el ícono de la ballena quede estático en la barra de tareas.
+
+**Docker: "Acceso denegado" al crear processed_files.json**
+→ Correr en CMD como administrador: `echo {} > processed_files.json`
+
 **"ANTHROPIC_API_KEY no configurada"**
-→ Ejecutar `set ANTHROPIC_API_KEY=sk-ant-...` en la misma terminal
+→ Verificar que el `.env` tenga la key correcta
 
 **"NOTION_TOKEN no configurado"**
-→ Ejecutar `set NOTION_TOKEN=secret_...` en la misma terminal
+→ Verificar que el `.env` tenga el token correcto
 
 **"La carpeta de documentos no existe"**
-→ Verificar la ruta `DOCUMENTS_ROOT` en `config.py`
+→ Con Docker: verificar que la carpeta `documentos/` exista junto al `docker-compose.yml`
+→ Sin Docker: verificar la ruta `DOCUMENTS_ROOT` en `config.py`
 
 **PDF sin texto extraído**
 → El PDF puede ser escaneado (imagen). Requeriría OCR (no incluido en esta versión).
 
 **Rate limit de la API**
-→ El sistema reintenta automáticamente. Si persiste, verificar el plan en console.anthropic.com
+→ El sistema reintenta automáticamente. Si persiste, verificar el plan en console.groq.com
 
 **Ver logs detallados:**
 ```
@@ -274,14 +383,18 @@ logs/summarizer.log
 
 ```
 Bot para facu/
-├── main.py                  ← Script principal (ejecutar este)
-├── config.py                ← Configuración (editá este)
+├── Dockerfile               ← Imagen Docker del proyecto
+├── docker-compose.yml       ← Configuración Docker (para desarrollo)
+├── requirements.txt         ← Dependencias Python
+├── main.py                  ← Script principal (CLI)
+├── tui.py                   ← Interfaz gráfica TUI (ejecutar este)
+├── config.py                ← Configuración central
 ├── .env                     ← Tus API keys (NO subir a GitHub)
 ├── .env.example             ← Plantilla del .env (sí subir)
 ├── .gitignore
 ├── README.md
-├── install.bat              ← Instala dependencias
-├── setup_scheduler.bat      ← Configura tarea automática
+├── install.bat              ← Instala dependencias (sin Docker)
+├── setup_scheduler.bat      ← Configura tarea automática (sin Docker)
 ├── processed_files.json     ← Generado automáticamente
 ├── logs/
 │   └── summarizer.log       ← Generado automáticamente
@@ -313,8 +426,4 @@ Bot para facu/
 - **CLI completo** — `--dry-run`, `--reset`, `--subject`, `--skip-download`, `--download-only`
 - **Ejecución programada** — `setup_scheduler.bat` configura una tarea en Windows Task Scheduler
 
-### Ideas para próximas versiones
-- OCR para PDFs escaneados (imágenes)
-- Resumen comparativo entre parciales de distintos años
-- Notificación por WhatsApp/email cuando hay material nuevo en el campus
-- Modo interactivo para elegir materia sin escribir comandos
+- **Interfaz TUI** — `python tui.py` abre un panel de configuración visual con 6 secciones: Estado, Proveedor, Modelo, Keys, Prompt y Ejecutar. Muestra límites y cuota de cada modelo en tiempo real. Ejecuta el procesamiento con log visible.
