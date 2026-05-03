@@ -12,7 +12,7 @@ install.bat
 ```
 O manualmente:
 ```cmd
-pip install anthropic groq pdfplumber python-docx notion-client playwright python-dotenv
+pip install anthropic groq pdfplumber python-docx notion-client playwright python-dotenv textual
 playwright install chromium
 ```
 
@@ -36,11 +36,65 @@ El archivo `.env` **nunca se sube a GitHub** — ya está en `.gitignore`.
 - **Notion:** https://www.notion.so/my-integrations → New Integration → copiar token
 - **Anthropic (solo si usás `PROVIDER=anthropic`):** https://console.anthropic.com → API Keys
 
-### 4. Probar
+### 4. Lanzar la interfaz
+```cmd
+python tui.py
+```
+Abre el panel de configuración visual. Desde ahí podés configurar todo y ejecutar el procesamiento.
+
+O usá la CLI directamente:
 ```cmd
 python main.py --dry-run
 ```
-Si muestra los archivos sin errores, todo está listo.
+
+---
+
+## 🖥️ Interfaz TUI (Recomendado)
+
+```cmd
+python tui.py
+```
+
+Abre una interfaz de pantalla completa en la terminal para configurar el sistema sin tocar archivos.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Resumidor Academico — UNO Campus Edition        [Header]    │
+├────────────┬─────────────────────────────────────────────────┤
+│ > Estado   │  Estado del sistema                             │
+│  Proveedor │  Proveedor: Groq — llama-3.3-70b-versatile      │
+│  Modelo    │  Cuota Groq: ~47 PDFs disponibles hoy           │
+│  Keys      │  Archivos pendientes: 3                         │
+│  Prompt    │                                                 │
+│  Ejecutar  │  Carpeta de documentos:                         │
+│            │  [C:\Users\...\Materiales facu            ]     │
+├────────────┴─────────────────────────────────────────────────┤
+│  [S] Guardar  [↑↓] Navegar  [?] Ayuda  [Q] Salir            │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Secciones
+
+| Sección | Qué podés hacer |
+|---------|-----------------|
+| **Estado** | Ver stats del sistema, cuota de Groq, archivos pendientes, log reciente. Cambiar la carpeta de documentos. |
+| **Proveedor** | Elegir entre Groq (gratis) y Anthropic (pago) |
+| **Modelo** | Seleccionar modelo con tabla de límites (req/min, tokens/día, costo). Expandir parámetros avanzados (chunk size, max tokens). |
+| **Keys** | Configurar todas las credenciales: Groq API key, Anthropic API key, usuario/clave del campus, token y database ID de Notion. |
+| **Prompt** | Editar el prompt de resumen (técnica Feynman). Botón para restablecer al default. |
+| **Ejecutar** | Lanzar el procesamiento con log en tiempo real. Modos: completo, solo descargar, solo resumir, dry-run. Filtro por materia. |
+
+### Teclas
+
+| Tecla | Acción |
+|-------|--------|
+| `S` | Guardar la configuración del panel activo |
+| `Q` | Salir |
+| `?` | Mostrar ayuda |
+| `↑ / ↓` | Navegar entre secciones |
+| `Escape` | Cerrar modal de ayuda |
+
+Los cambios se guardan en `.env` — nunca en el código.
 
 ---
 
@@ -226,17 +280,22 @@ Con Groq el costo es $0.00.
 
 ## 🔧 Personalización
 
-### Cambiar modelo de IA (config.py)
-```python
-# Más barato, rápido
-MODEL = "claude-haiku-4-5-20251001"
+La forma más fácil de personalizar es usar `python tui.py` — secciones **Modelo** y **Prompt**.
 
-# Más detallado (x6 más caro)
-MODEL = "claude-sonnet-4-6"
+### Cambiar modelo de IA
+Desde el TUI → sección **Modelo** → seleccioná el modelo deseado → **Guardar**.
+
+O editá `config.py`:
+```python
+MODEL = "claude-haiku-4-5-20251001"   # Anthropic — más rápido y económico
+MODEL = "claude-sonnet-4-5"            # Anthropic — más detallado
+GROQ_MODEL = "llama-3.1-8b-instant"   # Groq — más rápido, menor calidad
 ```
 
-### Personalizar el formato del resumen (config.py)
-Editá `SUMMARY_PROMPT_TEMPLATE` para cambiar la estructura del resumen generado.
+### Personalizar el prompt de resumen
+Desde el TUI → sección **Prompt** → editá el texto → **Guardar**.
+
+O editá `SUMMARY_PROMPT_TEMPLATE` en `config.py`.
 
 ### Cambiar frecuencia de ejecución
 En `setup_scheduler.bat`, cambiar `/d SUN` por:
@@ -274,8 +333,9 @@ logs/summarizer.log
 
 ```
 Bot para facu/
-├── main.py                  ← Script principal (ejecutar este)
-├── config.py                ← Configuración (editá este)
+├── main.py                  ← Script principal (CLI)
+├── tui.py                   ← Interfaz gráfica TUI (ejecutar este)
+├── config.py                ← Configuración central
 ├── .env                     ← Tus API keys (NO subir a GitHub)
 ├── .env.example             ← Plantilla del .env (sí subir)
 ├── .gitignore
@@ -313,8 +373,4 @@ Bot para facu/
 - **CLI completo** — `--dry-run`, `--reset`, `--subject`, `--skip-download`, `--download-only`
 - **Ejecución programada** — `setup_scheduler.bat` configura una tarea en Windows Task Scheduler
 
-### Ideas para próximas versiones
-- OCR para PDFs escaneados (imágenes)
-- Resumen comparativo entre parciales de distintos años
-- Notificación por WhatsApp/email cuando hay material nuevo en el campus
-- Modo interactivo para elegir materia sin escribir comandos
+- **Interfaz TUI** — `python tui.py` abre un panel de configuración visual con 6 secciones: Estado, Proveedor, Modelo, Keys, Prompt y Ejecutar. Muestra límites y cuota de cada modelo en tiempo real. Ejecuta el procesamiento con log visible.

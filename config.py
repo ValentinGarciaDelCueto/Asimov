@@ -54,6 +54,12 @@ NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
 NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID", "")
 
 # ----------------------------------------------------------
+# CAMPUS UNO
+# ----------------------------------------------------------
+CAMPUS_USER = os.environ.get("CAMPUS_USER", "")
+CAMPUS_PASS = os.environ.get("CAMPUS_PASS", "")
+
+# ----------------------------------------------------------
 # RUTAS
 # ----------------------------------------------------------
 # Carpeta raíz donde están tus documentos organizados por materia

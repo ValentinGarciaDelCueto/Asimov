@@ -25,7 +25,7 @@ echo.
 
 REM Instalar dependencias
 echo Instalando librerias...
-pip install anthropic groq pdfplumber python-docx notion-client playwright python-dotenv
+pip install anthropic groq pdfplumber python-docx notion-client playwright python-dotenv textual
 
 if %ERRORLEVEL% EQU 0 (
     echo.
@@ -57,7 +57,10 @@ echo     - NOTION_TOKEN     (token de tu integración)
 echo     - NOTION_DATABASE_ID (ID de tu base de datos)
 echo     - DOCUMENTS_ROOT   (carpeta con tus PDFs/Word)
 echo.
-echo  3. Probá con:
+echo  3. Abrí la interfaz gráfica con:
+echo     python tui.py
+echo.
+echo     (o usá la CLI directamente):
 echo     python main.py --dry-run
 echo.
 echo  4. Cuando funcione, configurá el scheduler:

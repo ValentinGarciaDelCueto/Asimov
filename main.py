@@ -8,6 +8,7 @@
 #    python main.py --dry-run          → muestra qué haría, sin API ni campus
 #    python main.py --reset            → reprocesa todos los archivos
 #    python main.py --subject "Mat"    → solo esa materia
+#    python tui.py  → Abre la interfaz para el usuario
 # ============================================================
 
 import argparse
