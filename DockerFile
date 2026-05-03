@@ -1,0 +1,64 @@
+# ============================================================
+#  Dockerfile — Bot para facu
+#  Python 3.12 slim + Playwright Chromium
+# ============================================================
+
+FROM python:3.12-slim
+
+# Evitar prompts interactivos durante la instalación
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Dependencias del sistema necesarias para Playwright/Chromium
+RUN apt-get update && apt-get install -y \
+    # Chromium dependencies
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    libgbm1 \
+    libgtk-3-0 \
+    libasound2 \
+    libxss1 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxtst6 \
+    # PDF tools
+    poppler-utils \
+    # Utilidades
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Directorio de trabajo dentro del contenedor
+WORKDIR /app
+
+# Copiar e instalar dependencias Python primero (mejor cache)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Instalar Playwright y descargar solo Chromium
+RUN playwright install chromium --with-deps
+
+# Copiar el código fuente del proyecto
+COPY . .
+
+# Carpeta para documentos (se puede montar como volumen)
+RUN mkdir -p /data/documentos /app/logs
+
+# Variables de entorno con valores por defecto (se sobreescriben en .env o docker-compose)
+ENV DOCUMENTS_ROOT=/data/documentos \
+    PROVIDER=groq \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Puerto expuesto (la TUI de Textual corre en terminal, no en red)
+# Si en el futuro se agrega una API web, descomentar:
+# EXPOSE 8000
+
+# Comando por defecto: ejecutar el bot principal
+CMD ["python", "main.py"]

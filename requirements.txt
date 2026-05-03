@@ -1,0 +1,23 @@
+# ============================================================
+#  requirements.txt — Dependencias del Bot para facu
+# ============================================================
+
+# IA
+anthropic>=0.40.0
+groq>=0.11.0
+
+# Web scraping / campus
+playwright>=1.44.0
+
+# Extracción de documentos
+pdfplumber>=0.11.0
+python-docx>=1.1.0
+
+# Notion
+notion-client>=2.2.0
+
+# TUI
+textual>=0.80.0
+
+# Utilidades
+python-dotenv>=1.0.0

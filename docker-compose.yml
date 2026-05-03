@@ -1,0 +1,41 @@
+# ============================================================
+#  docker-compose.yml — Bot para facu
+#
+#  USO:
+#    docker compose run --rm bot python main.py
+#    docker compose run --rm bot python main.py --skip-download
+#    docker compose run --rm bot python tui.py
+# ============================================================
+
+services:
+  bot:
+    build: .
+    image: bot-para-facu:latest
+    container_name: bot_facu
+
+    # Montar carpeta local de documentos dentro del contenedor
+    volumes:
+      - ./documentos:/data/documentos        # PDFs y DOCX de la facu
+      - ./logs:/app/logs                     # Logs del sistema
+      - ./processed_files.json:/app/processed_files.json  # Registro de archivos procesados
+
+    # Cargar variables de entorno desde .env (NUNCA commitear el .env)
+    env_file:
+      - .env
+
+    # Anular variables específicas si hace falta
+    environment:
+      - DOCUMENTS_ROOT=/data/documentos
+      - PYTHONUNBUFFERED=1
+
+    # Necesario para que Playwright/Chromium funcione en Docker
+    # (algunos entornos necesitan permisos extra para el sandbox de Chrome)
+    security_opt:
+      - seccomp:unconfined
+
+    # stdin y tty para la TUI de Textual (necesario para `tui.py`)
+    stdin_open: true
+    tty: true
+
+    # Política de reinicio: no reiniciar automáticamente (es un script, no un servidor)
+    restart: "no"

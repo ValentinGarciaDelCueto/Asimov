@@ -1,0 +1,49 @@
+# ============================================================
+#  .dockerignore — Archivos excluidos de la imagen Docker
+# ============================================================
+
+# Git
+.git/
+.gitignore
+
+# Variables de entorno (NUNCA incluir en la imagen)
+.env
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+.env/
+
+# Logs locales (se montan como volumen)
+logs/
+*.log
+
+# Documentos locales (se montan como volumen)
+documentos/
+
+# Registro de archivos procesados (se monta como volumen)
+processed_files.json
+
+# IDE y editores
+.cursor/
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Scripts de Windows (no necesarios en el contenedor Linux)
+install.bat
+setup_scheduler.bat
+
+# README y docs
+README.md
+CLAUDE.md
