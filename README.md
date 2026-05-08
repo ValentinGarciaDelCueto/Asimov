@@ -1,376 +1,177 @@
-# 📚 Academic Summarizer
+# Academic Summarizer — UNO Campus Edition
 
-Sistema automático que lee tus documentos universitarios (PDF y Word), los resume con IA y guarda los resultados en Notion, organizado por materia.
+Sistema automático que descarga PDFs del campus UNO, los resume con IA y sube los resúmenes a Google Drive como Google Docs.
 
 ---
 
-## ⚡ Instalación rápida (4 pasos)
+## Instalación rápida
 
 ### 1. Instalar dependencias
-```
+
+```cmd
 install.bat
 ```
+
 O manualmente:
 ```cmd
-pip install anthropic groq pdfplumber python-docx notion-client playwright python-dotenv textual
+pip install anthropic groq pdfplumber python-docx playwright python-dotenv textual google-api-python-client google-auth-httplib2 google-auth-oauthlib
 playwright install chromium
 ```
 
 ### 2. Crear el archivo .env
+
 ```cmd
 copy .env.example .env
 ```
-Abrí `.env` con el Bloc de notas y completá tus valores:
+
+Completá los valores principales:
 ```env
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxx
 CAMPUS_USER=tu_usuario
 CAMPUS_PASS=tu_contraseña
-NOTION_TOKEN=secret_xxxxxxxxxxxxxxxx
-NOTION_DATABASE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-DOCUMENTS_ROOT=C:\Users\TuNombre\Documentos\Universidad
+DRIVE_CREDENTIALS_FILE=credentials.json
 ```
+
 El archivo `.env` **nunca se sube a GitHub** — ya está en `.gitignore`.
 
-### 3. Obtener las API keys
-- **Groq (gratis):** https://console.groq.com → API Keys
-- **Notion:** https://www.notion.so/my-integrations → New Integration → copiar token
-- **Anthropic (solo si usás `PROVIDER=anthropic`):** https://console.anthropic.com → API Keys
+### 3. Configurar Google Drive
 
-### 4. Lanzar la interfaz
+1. [GCP Console](https://console.cloud.google.com) → Crear proyecto → Habilitar **Google Drive API**
+2. Credenciales → Crear → OAuth client ID → tipo **Desktop app** → Descargar JSON
+3. Renombrar el archivo descargado a `credentials.json` y ponerlo en la raíz del proyecto
+4. Primer run abre el navegador automáticamente para que apruebes → cachea `token.json`
+
+### 4. Lanzar
+
 ```cmd
 python tui.py
-```
-Abre el panel de configuración visual. Desde ahí podés configurar todo y ejecutar el procesamiento.
-
-O usá la CLI directamente:
-```cmd
-python main.py --dry-run
 ```
 
 ---
 
-## 🖥️ Interfaz TUI (Recomendado)
+## TUI (Recomendado)
 
 ```cmd
 python tui.py
 ```
 
-Abre una interfaz de pantalla completa en la terminal para configurar el sistema sin tocar archivos.
+8 paneles: **Estado | Carpetas | Proveedor | Modelo | Keys | Drive | Prompt | Ejecutar**
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  Resumidor Academico — UNO Campus Edition        [Header]    │
-├────────────┬─────────────────────────────────────────────────┤
-│ > Estado   │  Estado del sistema                             │
-│  Proveedor │  Proveedor: Groq — llama-3.3-70b-versatile      │
-│  Modelo    │  Cuota Groq: ~47 PDFs disponibles hoy           │
-│  Keys      │  Archivos pendientes: 3                         │
-│  Prompt    │                                                 │
-│  Ejecutar  │  Carpeta de documentos:                         │
-│            │  [C:\Users\...\Materiales facu            ]     │
-├────────────┴─────────────────────────────────────────────────┤
-│  [S] Guardar  [↑↓] Navegar  [?] Ayuda  [Q] Salir            │
-└──────────────────────────────────────────────────────────────┘
-```
+### Panel Ejecutar
 
-### Secciones
+| Botón | Acción |
+|-------|--------|
+| `[1] Descargar` | Scrape Moodle → `data/raw/{materia}/` |
+| `[2] Organizar` | Dedup + rename → `data/processed/{materia}/` |
+| `[3] Procesar`  | Resumir con IA + subir a Drive |
+| `[Todo]`        | Los 3 pasos secuenciales |
 
-| Sección | Qué podés hacer |
-|---------|-----------------|
-| **Estado** | Ver stats del sistema, cuota de Groq, archivos pendientes, log reciente. Cambiar la carpeta de documentos. |
-| **Proveedor** | Elegir entre Groq (gratis) y Anthropic (pago) |
-| **Modelo** | Seleccionar modelo con tabla de límites (req/min, tokens/día, costo). Expandir parámetros avanzados (chunk size, max tokens). |
-| **Keys** | Configurar todas las credenciales: Groq API key, Anthropic API key, usuario/clave del campus, token y database ID de Notion. |
-| **Prompt** | Editar el prompt de resumen (técnica Feynman). Botón para restablecer al default. |
-| **Ejecutar** | Lanzar el procesamiento con log en tiempo real. Modos: completo, solo descargar, solo resumir, dry-run. Filtro por materia. |
+El campo **Filtro de materia** acepta año: `POO II 2026` descarga solo el curso de ese año.
 
 ### Teclas
 
 | Tecla | Acción |
 |-------|--------|
-| `S` | Guardar la configuración del panel activo |
+| `S` | Guardar panel activo |
 | `Q` | Salir |
-| `?` | Mostrar ayuda |
-| `↑ / ↓` | Navegar entre secciones |
-| `Escape` | Cerrar modal de ayuda |
-
-Los cambios se guardan en `.env` — nunca en el código.
+| `↑ / ↓` | Navegar secciones |
 
 ---
 
-## 🗂️ Configuración de Notion
+## CLI
 
-### Crear la base de datos
-Creá una base de datos en Notion con estas propiedades:
-
-| Propiedad | Tipo   | Descripción                     |
-|-----------|--------|---------------------------------|
-| Nombre    | Título | Nombre del archivo PDF/DOCX     |
-| Materia   | Texto  | Nombre de la materia            |
-| Fecha     | Fecha  | Fecha de generación del resumen |
-| Estado    | Select | Pendiente / Leído / Repasado    |
-
-El campo **Estado** te permite filtrar en Notion qué resúmenes ya repasaste antes de un parcial.
-
-### Obtener el token de Notion
-1. Ir a https://www.notion.so/my-integrations
-2. Crear nueva integración → Internal Integration
-3. Abrir la base de datos en Notion → Connections → conectar tu integración
-
-### Obtener el Database ID
-El ID está en la URL de tu base de datos:
-```
-https://www.notion.so/TuNombre/ESTE-ES-EL-ID?v=...
-```
-Es la parte de 32 caracteres entre la última `/` y el `?`.
-
----
-
-## 📁 Estructura de carpetas
-
-### Tu carpeta de documentos (input):
-```
-Universidad/
-├── Matemáticas/
-│   ├── clase1_integrales.pdf
-│   └── guia_practica.docx
-├── Historia/
-│   └── unidad2_revolucion.pdf
-└── Programación/
-    └── apuntes_algoritmos.docx
-```
-
-### Tu base de datos en Notion (output):
-```
-📚 Resumenes Facu
-├── clase1_integrales.pdf     → Matemáticas  → Pendiente
-├── guia_practica.docx        → Matemáticas  → Leído
-├── unidad2_revolucion.pdf    → Historia     → Repasado
-└── apuntes_algoritmos.docx   → Programación → Pendiente
-```
-
----
-
-## 📥 Descarga de campus
-
-Descarga el archivo más reciente de una materia específica directamente desde el campus virtual de UNO.
-
-### Configurar credenciales del campus
 ```cmd
-set CAMPUS_USER=tu_usuario
-set CAMPUS_PASS=tu_contraseña
+python main.py                                # pipeline completo
+python main.py --dry-run                      # preview sin API calls
+python main.py --skip-download                # solo resumir
+python main.py --download-only                # solo descargar
+python main.py --subject "POO II"             # filtrar por materia
+python main.py --subject "POO II 2026"        # filtrar por materia + año
+python main.py --reset                        # reprocesar todo
 ```
-O pasar las credenciales directamente con `--usuario` y `--clave`.
 
-### Uso básico
+### Downloader directo
+
 ```cmd
-python campus_downloader.py --materia "Problemática Regional" --dest "C:\Descargas"
+python -m src.downloader --subject "POO II 2026" --raw-root ./data/raw --headless
 ```
 
-### Especificar año (útil para materias recursadas)
-```cmd
-python campus_downloader.py --materia "Álgebra" --año 2026 --dest "C:\Descargas"
-```
+Parámetros:
 
-### Con credenciales explícitas
-```cmd
-python campus_downloader.py --materia "Análisis Matemático" --año 2026 --dest "C:\Descargas" --usuario minombre --clave mipassword
-```
+| Flag | Default | Descripción |
+|------|---------|-------------|
+| `--subject` | todas | Nombre de materia. Acepta año al final: `"POO II 2026"` o `"POO II 1C2026"` |
+| `--year` | actual | Año explícito (override del año en `--subject`) |
+| `--raw-root` | `./data/raw` | Carpeta destino |
+| `--headless` / `--no-headless` | headless | Mostrar browser |
 
-### Parámetros disponibles
-
-| Parámetro   | Requerido | Descripción |
-|-------------|-----------|-------------|
-| `--materia` | Sí | Nombre parcial de la materia (sin acentos también funciona) |
-| `--año`     | No | Año del curso. Por defecto usa el año actual |
-| `--dest`    | Sí | Carpeta donde guardar el archivo descargado |
-| `--usuario` | No | Usuario del campus (alternativa a `CAMPUS_USER`) |
-| `--clave`   | No | Contraseña del campus (alternativa a `CAMPUS_PASS`) |
-
-### Notas
-- Los cursos en UNO tienen el formato `01017-Álgebra y Geometría Analítica (1C2024)`. El script reconoce este formato automáticamente.
-- Si cursaste la misma materia dos veces, especificá `--año` para distinguir entre instancias.
-- El script descarga únicamente el archivo más reciente del curso (detecta timestamps de Moodle; si no hay, toma el último de la lista).
-- Se descargan solo archivos PDF y DOCX.
+Los cursos en UNO tienen formato `01017-Álgebra y Geometría Analítica (1C2024)`. El script reconoce este formato automáticamente. Si cursaste la misma materia varios años, especificá el año para descargar la instancia correcta.
 
 ---
 
-## 🖥️ Comandos disponibles
+## Proveedor de IA
 
-| Comando | Descripción |
-|---------|-------------|
-| `python main.py` | Procesa archivos nuevos |
-| `python main.py --dry-run` | Muestra qué procesaría (sin gastar tokens) |
-| `python main.py --reset` | Reprocesa todos los archivos desde cero |
-| `python main.py --subject "Matemáticas"` | Solo procesa esa materia |
-| `python main.py --subject "mat" --dry-run` | Búsqueda parcial + modo prueba |
+Por defecto usa **Groq** (`llama-3.3-70b-versatile`) — completamente gratuito.
 
----
+| Proveedor | Costo | Límite |
+|-----------|-------|--------|
+| Groq | Gratis | 100k tokens/día |
+| Anthropic | ~$0.10-1.50/mes | Sin límite diario |
 
-## ⏰ Automatización (domingo 8:00 AM)
-
-1. Abrir `setup_scheduler.bat` con clic derecho → **Ejecutar como administrador**
-2. Editar las variables `PROJECT_DIR` y `PYTHON_PATH` dentro del archivo
-3. Ejecutarlo
-
-Para ejecutar manualmente desde CMD:
-```cmd
-schtasks /run /tn "AcademicSummarizer"
+Cambiar en `.env`:
+```env
+PROVIDER=groq          # o anthropic
+GROQ_API_KEY=gsk_...
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ---
 
-## 🤖 Proveedor de IA: Groq (gratis) vs Anthropic
+## Estructura del proyecto
 
-Por defecto el sistema usa **Groq** con `llama-3.3-70b-versatile`, que es completamente gratuito.
-
-### Configurar Groq (por defecto)
-1. Ir a https://console.groq.com → API Keys → Create API Key
-2. En CMD:
-```cmd
-set GROQ_API_KEY=gsk_tu-key-aqui
 ```
-Groq ya es el default — no hace falta setear `PROVIDER`.
-
-### Límites del free tier de Groq
-
-| Límite | Cantidad |
-|--------|----------|
-| Requests por minuto | 30 |
-| Tokens por minuto | 6.000 |
-| Tokens por día | 100.000 |
-
-**¿Cuántos PDFs podés procesar?** Un PDF típico de facu usa ~3.000-5.000 tokens, entonces:
-- Por día: ~20-30 PDFs antes de llegar al límite
-- Por minuto: 1 PDF cada ~30-60 segundos (el sistema lo maneja automáticamente)
-
-Para uso normal de estudiante (materiales nuevos de la semana) sobra ampliamente. Si querés procesar una materia entera de un saque, el sistema pausará automáticamente cuando llegue al rate limit.
-
-El log te muestra cuántos PDFs te quedan en la cuota diaria:
-```
-Palabras: 2,341 | PDFs restantes hoy (aprox): ~42
-```
-
-Verificá tus límites actuales en: https://console.groq.com → Settings → Limits
-
-### Cambiar a Anthropic (pago, sin límites diarios)
-```cmd
-set PROVIDER=anthropic
-set ANTHROPIC_API_KEY=sk-ant-tu-key-aqui
-```
-
-### Instalar dependencia de Groq
-```cmd
-pip install groq
+main.py                  — CLI entry point + dispatcher (3 pasos)
+tui.py                   — TUI Textual (8 paneles)
+config.py                — configuración central (lee .env)
+.env                     — secretos (no subir)
+.env.example             — plantilla
+install.bat              — instala dependencias
+setup_scheduler.bat      — configura tarea Windows automática
+src/
+  downloader/            — Playwright Moodle scraper
+  organizer/             — dedup + rename + move
+  processor/             — extract → summarize → Drive upload
+  extractor.py           — pdfplumber + python-docx
+  ai_client.py           — Groq + Anthropic
+  tracker.py             — hash MD5, registro processed_files.json
+data/
+  raw/                   — {materia}/{original}.pdf  (no en git)
+  processed/             — {materia}/{normalizado}.pdf  (no en git)
 ```
 
 ---
 
-## 💰 Costos estimados (solo si usás Anthropic)
+## Solución de problemas
 
-| Documentos/mes | Costo estimado |
-|----------------|----------------|
-| 20 docs de ~10 páginas | ~$0.10 |
-| 50 docs de ~20 páginas | ~$0.50 |
-| 100 docs de ~30 páginas | ~$1.50 |
+**Login fallido en campus**
+→ Verificar `CAMPUS_USER` / `CAMPUS_PASS` en `.env`. Guardar en Keys del TUI y reintentar en la misma sesión.
 
-Con Groq el costo es $0.00.
-
----
-
-## 🔧 Personalización
-
-La forma más fácil de personalizar es usar `python tui.py` — secciones **Modelo** y **Prompt**.
-
-### Cambiar modelo de IA
-Desde el TUI → sección **Modelo** → seleccioná el modelo deseado → **Guardar**.
-
-O editá `config.py`:
-```python
-MODEL = "claude-haiku-4-5-20251001"   # Anthropic — más rápido y económico
-MODEL = "claude-sonnet-4-5"            # Anthropic — más detallado
-GROQ_MODEL = "llama-3.1-8b-instant"   # Groq — más rápido, menor calidad
-```
-
-### Personalizar el prompt de resumen
-Desde el TUI → sección **Prompt** → editá el texto → **Guardar**.
-
-O editá `SUMMARY_PROMPT_TEMPLATE` en `config.py`.
-
-### Cambiar frecuencia de ejecución
-En `setup_scheduler.bat`, cambiar `/d SUN` por:
-- `/d MON` → lunes
-- `/d MON,WED,FRI` → lunes, miércoles y viernes
-- `/sc DAILY` → todos los días
-
----
-
-## 🐛 Solución de problemas
-
-**"ANTHROPIC_API_KEY no configurada"**
-→ Ejecutar `set ANTHROPIC_API_KEY=sk-ant-...` en la misma terminal
-
-**"NOTION_TOKEN no configurado"**
-→ Ejecutar `set NOTION_TOKEN=secret_...` en la misma terminal
-
-**"La carpeta de documentos no existe"**
-→ Verificar la ruta `DOCUMENTS_ROOT` en `config.py`
+**`credentials.json` no encontrado**
+→ Descargar de GCP Console (ver paso 3 de Configurar Google Drive).
 
 **PDF sin texto extraído**
-→ El PDF puede ser escaneado (imagen). Requeriría OCR (no incluido en esta versión).
+→ PDF escaneado (imagen). Requiere OCR — no incluido.
 
-**Rate limit de la API**
-→ El sistema reintenta automáticamente. Si persiste, verificar el plan en console.anthropic.com
+**Rate limit Groq**
+→ El sistema reintenta automáticamente. Ver cuota en [console.groq.com](https://console.groq.com) → Settings → Limits.
 
-**Ver logs detallados:**
+**Logs detallados:**
 ```
 logs/summarizer.log
 ```
 
 ---
 
-## 📋 Archivos del proyecto
+## Automatización (opcional)
 
-```
-Bot para facu/
-├── main.py                  ← Script principal (CLI)
-├── tui.py                   ← Interfaz gráfica TUI (ejecutar este)
-├── config.py                ← Configuración central
-├── .env                     ← Tus API keys (NO subir a GitHub)
-├── .env.example             ← Plantilla del .env (sí subir)
-├── .gitignore
-├── README.md
-├── install.bat              ← Instala dependencias
-├── setup_scheduler.bat      ← Configura tarea automática
-├── processed_files.json     ← Generado automáticamente
-├── logs/
-│   └── summarizer.log       ← Generado automáticamente
-└── src/
-    ├── ai_client.py         ← Comunica con Groq o Anthropic
-    ├── campus_downloader.py ← Descarga desde el campus UNO
-    ├── extractor.py         ← Lee PDFs y Word
-    ├── notion_writer.py     ← Guarda resúmenes en Notion
-    └── tracker.py           ← Registro de archivos procesados
-```
-
----
-
-## 🚀 Funcionalidades — v1.0.0
-
-### Implementadas
-- **Descarga automática del campus** — Se loguea al campus virtual de UNO (Moodle) con Playwright y descarga PDFs y DOCX nuevos de todos tus cursos
-- **Descarga selectiva por materia** — `campus_downloader.py --materia "Álgebra" --año 2026 --dest C:\Carpeta` descarga solo el archivo más reciente de esa materia, reconociendo el formato de nombre `01017-Álgebra (1C2026)`
-- **Extracción de texto** — Lee PDFs (pdfplumber) y archivos Word (.docx), incluyendo texto en tablas
-- **Resumen con IA** — Genera resúmenes estructurados con técnica Feynman: Tema Central, Conceptos Clave, Desarrollo, Conexiones, Preguntas de Examen y tips de estudio
-- **Soporte multi-proveedor** — Groq gratuito (`llama-3.3-70b-versatile`) o Anthropic Claude Haiku, configurable con `PROVIDER=groq/anthropic`
-- **Estimado de cuota diaria** — Con Groq muestra cuántos PDFs te quedan en la cuota de 100k tokens/día; con Anthropic muestra el costo en USD
-- **Guardado en Notion** — Crea páginas en una base de datos Notion con propiedades (Nombre, Materia, Fecha, Estado) y el resumen como contenido. Maneja bloques largos (+2000 chars) automáticamente
-- **Anti-duplicados** — Verifica en Notion y en el registro local antes de procesar, evitando resumir dos veces el mismo archivo
-- **Manejo de documentos largos** — Divide documentos extensos en chunks con superposición del 10%, resume por partes y consolida en un único resumen final
-- **Reintentos automáticos** — Manejo de rate limits (429) con backoff para Groq y Anthropic
-- **Tracking con hash MD5** — Detecta si un archivo ya procesado fue modificado y lo reprocesa
-- **Credenciales seguras** — Variables de entorno via `.env` (python-dotenv), nunca hardcodeadas
-- **CLI completo** — `--dry-run`, `--reset`, `--subject`, `--skip-download`, `--download-only`
-- **Ejecución programada** — `setup_scheduler.bat` configura una tarea en Windows Task Scheduler
-
-- **Interfaz TUI** — `python tui.py` abre un panel de configuración visual con 6 secciones: Estado, Proveedor, Modelo, Keys, Prompt y Ejecutar. Muestra límites y cuota de cada modelo en tiempo real. Ejecuta el procesamiento con log visible.
+Ejecutar `setup_scheduler.bat` como administrador para programar el pipeline cada domingo a las 8:00 AM.

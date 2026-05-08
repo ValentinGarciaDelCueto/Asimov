@@ -1,19 +1,15 @@
-# ============================================================
-#  src/tracker.py — Registro de archivos ya procesados
-#  Evita resumir el mismo documento dos veces
-# ============================================================
+"""Registro de archivos procesados — evita reprocesar el mismo documento."""
 
-import json
 import hashlib
+import json
 import logging
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
 def load_processed(log_path: Path) -> dict:
-    """Carga el registro de archivos procesados desde JSON."""
     if not log_path.exists():
         return {}
     try:
@@ -25,7 +21,6 @@ def load_processed(log_path: Path) -> dict:
 
 
 def save_processed(log_path: Path, processed: dict) -> None:
-    """Guarda el registro actualizado."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with open(log_path, "w", encoding="utf-8") as f:
@@ -35,41 +30,58 @@ def save_processed(log_path: Path, processed: dict) -> None:
 
 
 def is_processed(file_path: Path, processed: dict) -> bool:
-    """
-    Verifica si un archivo ya fue procesado.
-    Usa el hash MD5 del archivo para detectar si cambió el contenido
-    (así re-procesa si el archivo fue modificado).
-    """
+    """Return True if file was already summarized and content hasn't changed."""
     file_key = str(file_path.resolve())
     if file_key not in processed:
         return False
 
-    # Verificar si el archivo cambió desde la última vez
-    current_hash = _file_hash(file_path)
-    stored_hash = processed[file_key].get("hash", "")
+    entry = processed[file_key]
 
+    # Legacy entries (only have "processed_at") count as processed if hash matches
+    current_hash = _file_hash(file_path)
+    stored_hash = entry.get("hash", "")
     if current_hash != stored_hash:
-        logger.info(f"  Archivo modificado, se volverá a procesar: {file_path.name}")
+        logger.info(f"Archivo modificado, se volverá a procesar: {file_path.name}")
         return False
 
+    # New entries: must have been summarized (have summarized_at)
+    if "summarized_at" in entry:
+        return entry["summarized_at"] is not None
+
+    # Legacy entry with matching hash: treat as processed
     return True
 
 
-def mark_as_processed(
-    file_path: Path, processed: dict, output_path: Path | None = None
-) -> None:
-    """Registra un archivo como procesado con su hash y metadata."""
-    file_key = str(file_path.resolve())
+
+def mark_organized(orig_path: Path, dest_path: Path, processed: dict) -> None:
+    """Record that a file was moved from raw to processed folder."""
+    file_key = str(dest_path.resolve())
     processed[file_key] = {
-        "filename": file_path.name,
-        "hash": _file_hash(file_path),
-        "processed_at": datetime.now().isoformat(),
-        "output": str(output_path) if output_path else None,
+        "filename": dest_path.name,
+        "hash": _file_hash(dest_path),
+        "origin_path": str(orig_path.resolve()),
+        "organized_at": datetime.now().isoformat(),
+        "summarized_at": None,
+        "drive_doc_id": None,
     }
 
 
+def mark_summarized(
+    file_path: Path, processed: dict, drive_doc_id: str = ""
+) -> None:
+    """Record that a file was summarized (and optionally uploaded to Drive)."""
+    file_key = str(file_path.resolve())
+    entry = processed.get(file_key, {})
+    entry.update({
+        "filename": file_path.name,
+        "hash": _file_hash(file_path),
+        "summarized_at": datetime.now().isoformat(),
+        "drive_doc_id": drive_doc_id or None,
+    })
+    processed[file_key] = entry
+
+
 def _file_hash(file_path: Path) -> str:
-    """Calcula el hash MD5 de un archivo para detectar cambios."""
     try:
         md5 = hashlib.md5()
         with open(file_path, "rb") as f:

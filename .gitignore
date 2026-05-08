@@ -55,3 +55,14 @@ test-results/
 
 # ── Descargas temporales ─────────────────────────────────────
 downloads_temp/
+
+# ── Google Drive OAuth ───────────────────────────────────────
+credentials.json
+token.json
+
+# ── Datos descargados y procesados ──────────────────────────
+data/
+
+# ── Claude Code / IA local ──────────────────────────────────
+.claude/
+CLAUDE.md

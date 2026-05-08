@@ -25,7 +25,7 @@ echo.
 
 REM Instalar dependencias
 echo Instalando librerias...
-pip install anthropic groq pdfplumber python-docx notion-client playwright python-dotenv textual
+pip install anthropic groq pdfplumber python-docx playwright python-dotenv textual google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
 if %ERRORLEVEL% EQU 0 (
     echo.
@@ -53,9 +53,8 @@ echo  2. Abri .env con el Bloc de notas y completá:
 echo     - GROQ_API_KEY     (gratis en console.groq.com)
 echo     - CAMPUS_USER      (usuario del campus UNO)
 echo     - CAMPUS_PASS      (contraseña del campus UNO)
-echo     - NOTION_TOKEN     (token de tu integración)
-echo     - NOTION_DATABASE_ID (ID de tu base de datos)
-echo     - DOCUMENTS_ROOT   (carpeta con tus PDFs/Word)
+echo     - DRIVE_CREDENTIALS_FILE (ruta a credentials.json de Google)
+echo     - RAW_ROOT / PROCESSED_ROOT (carpetas de datos, default: ./data/)
 echo.
 echo  3. Abrí la interfaz gráfica con:
 echo     python tui.py
