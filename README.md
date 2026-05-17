@@ -1,4 +1,4 @@
-# Academic Summarizer — UNO Campus Edition
+# Asimov — UNO Campus Edition
 
 Sistema automático que descarga PDFs del campus UNO, los resume con IA y sube los resúmenes a Google Drive como Google Docs.
 

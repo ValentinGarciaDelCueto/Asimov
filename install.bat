@@ -6,7 +6,7 @@ REM ============================================================
 
 echo.
 echo ====================================================
-echo  Instalando dependencias de Academic Summarizer
+echo  Instalando dependencias de Asimov
 echo ====================================================
 echo.
 

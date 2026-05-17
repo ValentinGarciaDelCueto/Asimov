@@ -16,35 +16,37 @@ _MONTHS_ES = {
 
 
 def find_resource_links(page) -> list[tuple[str, str]]:
-    """Return list of (name, url) for downloadable resources on the course page."""
+    """Return (name, url) for every /mod/* activity link on the course page.
+
+    Uses a URL-based catch-all so it works across Moodle 3.x and 4.x themes
+    without relying on CSS class names that change between versions.
+    """
     seen: set[str] = set()
     links: list[tuple[str, str]] = []
 
-    activity_selectors = [
-        ".activityinstance a",
-        ".activity a.aalink",
-        "[data-activityname] a",
-        ".instancename",
-    ]
+    for link in page.query_selector_all("a[href*='/mod/']"):
+        href = link.get_attribute("href") or ""
+        if not href or href in seen:
+            continue
 
-    for sel in activity_selectors:
-        for el in page.query_selector_all(sel):
-            href = el.get_attribute("href")
-            if not href:
-                try:
-                    parent = el.evaluate_handle("el => el.parentElement")
-                    if parent:
-                        href = parent.get_attribute("href")
-                except Exception:
-                    pass
+        # Pick a human-readable name from typical containers, then fall back.
+        name = ""
+        for sel in [".instancename", ".activityname", ".multiline"]:
+            el = link.query_selector(sel)
+            if el:
+                name = (el.inner_text() or "").strip()
+                if name:
+                    break
+        if not name:
+            name = (link.inner_text() or "").strip()
+        if not name:
+            name = (link.get_attribute("aria-label") or "").strip()
+        if not name:
+            name = href.rsplit("/", 1)[-1]
 
-            name_el = el.query_selector(".instancename") or el
-            name = (name_el.inner_text() or href or "recurso").strip()
-            name = re.sub(r'\s+', ' ', name)
-
-            if href and href not in seen:
-                seen.add(href)
-                links.append((name, href))
+        name = re.sub(r'\s+', ' ', name).strip()
+        seen.add(href)
+        links.append((name, href))
 
     return links
 

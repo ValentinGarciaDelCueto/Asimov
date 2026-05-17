@@ -41,6 +41,7 @@ def run(
     skip_download: bool = False,
     download_only: bool = False,
     year: int | None = None,
+    headless: bool | None = None,
 ):
     logger = logging.getLogger(__name__)
     provider_label = (
@@ -48,7 +49,7 @@ def run(
         else f"Anthropic ({config.MODEL})"
     )
     logger.info("=" * 50)
-    logger.info("Academic Summarizer — UNO Campus Edition")
+    logger.info("Asimov — UNO Campus Edition")
     logger.info(f"   Proveedor: {provider_label}")
     logger.info(f"   Raw:       {config.RAW_ROOT}")
     logger.info(f"   Procesado: {config.PROCESSED_ROOT}")
@@ -59,11 +60,12 @@ def run(
         logger.info("\nPASO 1: Descargando materiales del campus...")
         try:
             from src.downloader import download
+            effective_headless = config.CAMPUS_HEADLESS if headless is None else headless
             report = download(
                 raw_root=config.RAW_ROOT,
                 subject_filter=subject_filter,
                 year=year,
-                headless=config.CAMPUS_HEADLESS,
+                headless=effective_headless,
             )
             logger.info(
                 f"   {len(report.files_downloaded)} nuevo(s), "

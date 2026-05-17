@@ -74,16 +74,31 @@ def download(
                 parsed_subject, parsed_year = parse_subject_query(subject_filter)
                 effective_year = explicit_year if explicit_year is not None else parsed_year
 
+                from .courses import _normalize
+                needle = _normalize(parsed_subject)
+                courses_to_process = [
+                    (n, url) for n, url in courses
+                    if needle in _normalize(n)
+                ]
                 if effective_year is not None:
-                    match = find_matching_course(courses, parsed_subject, effective_year)
-                    courses_to_process = [match] if match else []
-                else:
-                    from .courses import _normalize
-                    needle = _normalize(parsed_subject)
                     courses_to_process = [
-                        (n, url) for n, url in courses
-                        if needle in _normalize(n)
+                        (n, url) for n, url in courses_to_process
+                        if extract_course_year(n) == effective_year
                     ]
+
+                if not courses_to_process:
+                    available = [n for n, _ in courses]
+                    _emit(
+                        f"Sin coincidencias para '{parsed_subject}'"
+                        + (f" año {effective_year}" if effective_year else "")
+                        + f". Total cursos: {len(available)}"
+                    )
+                    for n in available:
+                        _emit(f"  - {n}")
+                else:
+                    _emit(f"Coincidencias ({len(courses_to_process)}):")
+                    for n, _ in courses_to_process:
+                        _emit(f"  - {n}")
             elif explicit_year is not None:
                 courses_to_process = [
                     (n, url) for n, url in courses
@@ -144,4 +159,6 @@ def download(
         f"{len(report.files_skipped)} existentes, "
         f"{len(report.errors)} errores"
     )
+    _emit(f"Archivos guardados en: {raw_root.resolve()}")
+    _emit("Próximo: [2] Organizar -> [3] Procesar para subir resúmenes a Drive.")
     return report

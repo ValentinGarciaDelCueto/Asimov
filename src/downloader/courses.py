@@ -16,11 +16,17 @@ def list_courses(page) -> list[tuple[str, str]]:
     seen: set[str] = set()
     courses: list[tuple[str, str]] = []
 
-    for url in (f"{CAMPUS_URL}/my/", f"{CAMPUS_URL}/my/courses.php"):
-        for name, href in _scrape_course_links(page, url):
-            if href not in seen:
-                seen.add(href)
-                courses.append((name, href))
+    for name, href in _scrape_course_links(page, f"{CAMPUS_URL}/my/"):
+        if href not in seen:
+            seen.add(href)
+            courses.append((name, href))
+
+    # Follow "Todos los cursos" link from dashboard (UNO Moodle theme).
+    extra = _scrape_via_all_courses_link(page)
+    for name, href in extra:
+        if href not in seen:
+            seen.add(href)
+            courses.append((name, href))
 
     if not courses:
         courses = _list_courses_fallback(page)
@@ -28,7 +34,42 @@ def list_courses(page) -> list[tuple[str, str]]:
     if not courses:
         _dump_dashboard_diagnostics(page)
 
+    logger.info(f"list_courses() devolvió {len(courses)} cursos.")
     return courses
+
+
+def _scrape_via_all_courses_link(page) -> list[tuple[str, str]]:
+    """Locate the 'Todos los cursos' anchor on /my/ and follow it."""
+    try:
+        page.goto(f"{CAMPUS_URL}/my/", wait_until="networkidle", timeout=20000)
+    except Exception:
+        return []
+
+    target_href: str | None = None
+    candidates = (
+        "todos los cursos",
+        "todos mis cursos",
+        "all courses",
+        "ver todos",
+    )
+    try:
+        for link in page.query_selector_all("a"):
+            text = (link.inner_text() or "").strip().lower()
+            if not text:
+                continue
+            if any(c in text for c in candidates):
+                # el.href returns the resolved absolute URL
+                target_href = link.evaluate("el => el.href")
+                if target_href:
+                    break
+    except Exception:
+        return []
+
+    if not target_href:
+        return []
+
+    logger.info(f"Siguiendo link 'Todos los cursos' -> {target_href}")
+    return _scrape_course_links(page, target_href)
 
 
 def _scrape_course_links(page, url: str) -> list[tuple[str, str]]:
@@ -171,9 +212,11 @@ def find_matching_course(
     if not matches:
         available = [n for n, _ in courses]
         logger.error(
-            f"No se encontró ningún curso para '{subject_name}' (año {year}).\n"
-            f"Cursos disponibles: {available}"
+            f"No se encontró ningún curso para '{subject_name}' (año {year}). "
+            f"Total cursos detectados: {len(available)}"
         )
+        for n in available:
+            logger.error(f"  - {n}")
         return None
 
     if len(matches) > 1:

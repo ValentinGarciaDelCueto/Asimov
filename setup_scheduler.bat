@@ -10,11 +10,11 @@ REM  2. Ejecutá este script como Administrador (clic derecho → Ejecutar como 
 REM ============================================================
 
 REM ── EDITÁ ESTAS DOS LÍNEAS ───────────────────────────────────
-set PROJECT_DIR=C:\Users\TuNombre\academic_summarizer
+set PROJECT_DIR=C:\Users\TuNombre\asimov
 set PYTHON_PATH=C:\Users\TuNombre\AppData\Local\Programs\Python\Python311\python.exe
 REM ─────────────────────────────────────────────────────────────
 
-set TASK_NAME=AcademicSummarizer
+set TASK_NAME=Asimov
 
 echo.
 echo Configurando tarea programada: %TASK_NAME%

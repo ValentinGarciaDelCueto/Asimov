@@ -1,5 +1,5 @@
 # ============================================================
-#  tui.py — Interfaz TUI para Academic Summarizer (UNO)
+#  tui.py — Interfaz TUI para Asimov (UNO)
 #
 #  LANZAMIENTO:
 #    python tui.py
@@ -16,6 +16,8 @@ from __future__ import annotations
 import asyncio
 import importlib
 import logging
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -439,6 +441,26 @@ class ModeloPanel(ScrollableContainer):
     def on_mount(self) -> None:
         self._update_model_info()
 
+    def refresh_models(self) -> None:
+        """Rebuild model list when PROVIDER changes from another panel."""
+        import config
+        try:
+            sel = self.query_one("#model-select", Select)
+        except Exception:
+            return
+
+        if config.PROVIDER == "groq":
+            options = [(m, m) for m in GROQ_MODELS]
+            current_val = config.GROQ_MODEL
+        else:
+            options = [(m, m) for m in ANTHROPIC_MODELS]
+            current_val = config.MODEL
+
+        sel.set_options(options)
+        if current_val in [m for m, _ in options]:
+            sel.value = current_val
+        self._update_model_info()
+
     def _update_model_info(self) -> None:
         try:
             sel = self.query_one("#model-select", Select)
@@ -590,6 +612,18 @@ class PromptPanel(ScrollableContainer):
 class EjecutarPanel(ScrollableContainer):
     """3-step execution: Descargar → Organizar → Procesar."""
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._log_buffer: list[str] = []
+
+    def _log(self, msg: str) -> None:
+        """Write to RichLog AND track plain text for copy/save."""
+        log_widget = self.query_one("#run-log", RichLog)
+        log_widget.write(msg)
+        # Strip Rich markup ([bold green], etc.) for plain-text buffer
+        plain = re.sub(r"\[/?[a-zA-Z #=]+\]", "", msg)
+        self._log_buffer.append(plain)
+
     def compose(self) -> ComposeResult:
         yield Label("Ejecutar", classes="section-title")
 
@@ -607,6 +641,9 @@ class EjecutarPanel(ScrollableContainer):
         with Horizontal(classes="field-row"):
             yield Label("Resetear procesados:", classes="field-label")
             yield Switch(False, id="reset-switch")
+        with Horizontal(classes="field-row"):
+            yield Label("Browser visible:", classes="field-label")
+            yield Switch(False, id="visible-switch")
 
         yield Label("Acciones:", classes="subsection-label")
         with Horizontal(classes="exec-row"):
@@ -615,7 +652,10 @@ class EjecutarPanel(ScrollableContainer):
             yield Button("[3] Procesar",   variant="default", id="btn-run-process")
             yield Button("[Todo]",         variant="success", id="btn-run-all")
 
-        yield Label("Log en tiempo real:", classes="subsection-label")
+        with Horizontal(classes="exec-row"):
+            yield Label("Log en tiempo real:", classes="subsection-label")
+            yield Button("Copiar log",     variant="default", id="btn-copy-log")
+            yield Button("Limpiar",        variant="default", id="btn-clear-log")
         yield RichLog(id="run-log", highlight=True, markup=True, max_lines=500)
 
     def _get_common_kwargs(self) -> dict:
@@ -630,6 +670,7 @@ class EjecutarPanel(ScrollableContainer):
             "year":           year_val,
             "dry_run":        self.query_one("#dry-run-switch", Switch).value,
             "reset":          self.query_one("#reset-switch", Switch).value,
+            "headless":       not self.query_one("#visible-switch", Switch).value,
         }
 
     async def _run_async(self, mode: str) -> None:
@@ -637,9 +678,11 @@ class EjecutarPanel(ScrollableContainer):
 
         log_widget = self.query_one("#run-log", RichLog)
         log_widget.clear()
-        log_widget.write(f"[bold green]▶ Iniciando modo: {mode}...[/]")
+        self._log_buffer.clear()
+        self._log(f"[bold green]▶ Iniciando modo: {mode}...[/]")
 
         app_ref = self.app
+        panel_ref = self
 
         class TUILogHandler(logging.Handler):
             def __init__(self):
@@ -650,10 +693,13 @@ class EjecutarPanel(ScrollableContainer):
 
             def emit(self, record):
                 msg = self.format(record)
-                app_ref.call_from_thread(log_widget.write, msg)
+                app_ref.call_from_thread(panel_ref._log, msg)
 
         handler = TUILogHandler()
+        handler.setLevel(logging.INFO)
         root_logger = logging.getLogger()
+        prev_level = root_logger.level
+        root_logger.setLevel(logging.INFO)
         root_logger.addHandler(handler)
 
         kwargs = self._get_common_kwargs()
@@ -666,13 +712,14 @@ class EjecutarPanel(ScrollableContainer):
                     subject_filter=kwargs["subject_filter"],
                     year=kwargs["year"],
                     dry_run=kwargs["dry_run"],
+                    headless=kwargs["headless"],
                 )
             elif mode == "organize":
                 import config
                 from src.organizer import organize
 
                 def _org_event(msg: str) -> None:
-                    app_ref.call_from_thread(log_widget.write, msg)
+                    app_ref.call_from_thread(panel_ref._log, msg)
 
                 await asyncio.to_thread(
                     organize,
@@ -686,7 +733,7 @@ class EjecutarPanel(ScrollableContainer):
                 from src.processor import process
 
                 def _proc_event(msg: str) -> None:
-                    app_ref.call_from_thread(log_widget.write, msg)
+                    app_ref.call_from_thread(panel_ref._log, msg)
 
                 await asyncio.to_thread(
                     process,
@@ -704,25 +751,77 @@ class EjecutarPanel(ScrollableContainer):
                     year=kwargs["year"],
                     dry_run=kwargs["dry_run"],
                     reset=kwargs["reset"],
+                    headless=kwargs["headless"],
                 )
 
-            log_widget.write("[bold green]OK Completado.[/]")
+            self._log("[bold green]OK Completado.[/]")
         except Exception as exc:
-            log_widget.write(f"[bold red]!! Error: {exc}[/]")
+            self._log(f"[bold red]!! Error: {exc}[/]")
         finally:
             root_logger.removeHandler(handler)
+            root_logger.setLevel(prev_level)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        btn_id = event.button.id or ""
         mode_map = {
             "btn-run-download": "download",
             "btn-run-organize": "organize",
             "btn-run-process":  "process",
             "btn-run-all":      "all",
         }
-        mode = mode_map.get(event.button.id or "")
-        if mode:
+        if btn_id in mode_map:
             event.stop()
-            self.run_worker(self._run_async(mode), exclusive=True)
+            self.run_worker(self._run_async(mode_map[btn_id]), exclusive=True)
+            return
+
+        if btn_id == "btn-copy-log":
+            event.stop()
+            self._copy_log()
+            return
+
+        if btn_id == "btn-clear-log":
+            event.stop()
+            self.query_one("#run-log", RichLog).clear()
+            self._log_buffer.clear()
+            self.app.notify("Log limpiado.", title="OK")
+            return
+
+    def _copy_log(self) -> None:
+        """Save log to file and try to push to Windows clipboard via clip.exe."""
+        if not self._log_buffer:
+            self.app.notify("Log vacío. Corré algo primero.", severity="warning")
+            return
+
+        text = "\n".join(self._log_buffer)
+
+        # Always save to file as reliable fallback for debugging.
+        debug_dir = Path("./data/debug")
+        try:
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            log_path = debug_dir / "last-run-log.txt"
+            log_path.write_text(text, encoding="utf-8")
+            saved_msg = f"Guardado en: {log_path.resolve()}"
+        except Exception as e:
+            saved_msg = f"No se pudo guardar archivo: {e}"
+
+        # Try clipboard via Windows clip.exe (always available on Win10+).
+        try:
+            subprocess.run(
+                ["clip"],
+                input=text,
+                text=True,
+                encoding="utf-8",
+                check=True,
+                timeout=5,
+                shell=True,
+            )
+            self.app.notify(f"Log copiado al portapapeles. {saved_msg}", title="OK")
+        except Exception as e:
+            self.app.notify(
+                f"Clipboard falló: {e}. {saved_msg}",
+                severity="warning",
+                title="Atención",
+            )
 
 
 # ── Modal de ayuda ────────────────────────────────────────────
@@ -796,7 +895,7 @@ SAVE_BTN_MAP = {
 class SummarizerApp(App):
     CSS = APP_CSS
     TITLE = "Resumidor Academico — UNO Campus Edition"
-    SUB_TITLE = "Academic Summarizer"
+    SUB_TITLE = "Asimov"
 
     BINDINGS = [
         Binding("s",             "save",     "Guardar",  show=True),
@@ -847,6 +946,17 @@ class SummarizerApp(App):
     def action_help(self) -> None:
         self.push_screen(HelpScreen())
 
+    def _refresh_dependent_panels(self) -> None:
+        """Re-render panels whose contents depend on reloaded config."""
+        try:
+            self.query_one(EstadoPanel).refresh_stats()
+        except Exception:
+            pass
+        try:
+            self.query_one(ModeloPanel).refresh_models()
+        except Exception:
+            pass
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         btn_id = event.button.id or ""
 
@@ -866,6 +976,7 @@ class SummarizerApp(App):
             if proc_val:
                 save_to_env("PROCESSED_ROOT", proc_val)
             reload_config()
+            self._refresh_dependent_panels()
             self.notify("Carpetas guardadas.", title="Guardado")
             return
 
@@ -874,6 +985,7 @@ class SummarizerApp(App):
             value = "anthropic" if rs.pressed_index == 1 else "groq"
             save_to_env("PROVIDER", value)
             reload_config()
+            self._refresh_dependent_panels()
             self.notify(f"Proveedor guardado: {value}", title="Guardado")
             return
 
@@ -900,6 +1012,7 @@ class SummarizerApp(App):
                     pass
 
             reload_config()
+            self._refresh_dependent_panels()
             self.notify("Modelo y parámetros guardados.", title="Guardado")
             return
 
